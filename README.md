@@ -1,2 +1,2 @@
 # verlet-physics-simulator
-![Alt Text](https://gfycat.com/ColorlessMenacingCentipede)
+<iframe src='https://gfycat.com/ifr/ColorlessMenacingCentipede' frameborder='0' scrolling='no' width='640' height='' allowfullscreen></iframe>
