@@ -5,4 +5,4 @@
 ![Alt Text](http://imgur.com/IpCM0Bh.gif)
 ![Alt Text](http://imgur.com/HqgBGdy.gif)
 ![Alt Text](http://imgur.com/2lIKVWH.gif)
-Higher Res: https://my.mixtape.moe/kmiayf.webm
+<br/>Higher Res: https://my.mixtape.moe/kmiayf.webm
