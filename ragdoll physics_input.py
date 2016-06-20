@@ -1,4 +1,7 @@
 import pygame, sys, math, random, time
+from json import dumps as jsonDump
+from json import loads as jsonLoad
+from  tkinter import Tk, filedialog, messagebox
 from pygame.locals import*
 from vec2 import Vector2
 
@@ -114,12 +117,12 @@ class Point():
           self.spinSpeed = None
           self.currentSpin = None
           Point.points.append(self)
-     def motorize(self, pos, speed = math.pi/20):
+     def motorize(self, pos, speed = math.pi/50, current = 0):
           self.isMotor = True
           self.pinned = True
           self.spinPos = pos
           self.spinSpeed = speed
-          self.currentSpin = 0
+          self.currentSpin = (self.pos - pos).angle()
           self.spinRad = (self.pos - self.spinPos).get_magnitude()
           self.color = GREEN
      def drawPoint(self):
@@ -212,6 +215,8 @@ class Point():
      
 
 
+
+
 '''        
  _______         _       _______________________________ _       _______ 
 (  ____ |\     /( (    /(  ____ \__   __\__   __(  ___  ( (    /(  ____ \
@@ -223,12 +228,75 @@ class Point():
 |/      (_______|/    )_(_______/  )_(  \_______(_______|/    )_\_______)
                                                                          
 '''
+def load():
+     root = Tk()
+     root.withdraw()
+     root.filename =  filedialog.askopenfilename(title = "choose your file",
+                  filetypes = [("JSON files", ".json"),("All files", "*")])
+     pbackup = None
+     sbackup = None
+     with open(root.filename, 'r') as myfile:
+          data=myfile.read()
+     try:
+          d = jsonLoad(data)
+          pbackup = Point.points[1:]
+          sbackup = Stick.sticks[:]
+          del Point.points[1:]
+          del Stick.sticks[:]
+          for p in d['points']:
+               a = Point(Vector2(p['pos']['x'], p['pos']['y']), p['size'], p['pinned'])
+               if p['isMotor']:
+                    a.motorize(Vector2(p['spinPos']['x'], p['spinPos']['y']), p['spinSpeed'], p['currentSpin'])
+                    a.currentSpin = p['currentSpin']
+          for s in d['lines']:
+               b = Stick(Point.points[s['p1']], Point.points[s['p2']], s['visible'])
+     except Exception:
+          messagebox.showinfo("Error", "Invalid JSON")
+          if pbackup and sbackup:
+               Point.points += pbackup
+               Stick.sticks += sbackup
+          
+     
 
+def save():
+     root = Tk()
+     root.withdraw()
+     filename = filedialog.asksaveasfilename( filetypes = [("JSON files", ".json"),("All files", "*")],defaultextension='.json')
+     if filename:
+          
+          d = {'points':[], 'lines':[]}
+          for ppp in range(1,len(Point.points)):
+               p = Point.points[ppp]
+               pd = {
+                    'pos': {'x': p.pos.x, 'y': p.pos.y},
+                    'pinned' : p.pinned,
+                    'size' : p.size,
+                    'isMotor' : p.isMotor,
+                    'spinPos': p.spinPos if p.spinPos == None else {'x': p.spinPos.x, 'y': p.spinPos.y},
+                    'spinSpeed' : p.spinSpeed,
+                    'currentSpin' : p.currentSpin
+                    }
+               d['points'].append(pd)
+          for s in Stick.sticks:
+               sd = {
+                         'p1': save_helper_point_finder(s.p1),
+                         'p2': save_helper_point_finder(s.p2),
+                         'visible' : s.visible
+                    }
+               d['lines'].append(sd)
+          f = open(filename, 'w')
+          f.write(jsonDump(d, indent = 4))
+          f.close()
+def save_helper_point_finder(p):
+     for pp in range(len(Point.points)):
+          if Point.points[pp] == p:
+               return pp
 def stick_make(points, connections):
      '''points, a list of Points,
         connections, a list of '2 indices in points , in a tuple' '''
      for c in connections:
           Stick(points[c[0]], points[c[1]], c[2])
+          
      
 
 
@@ -247,6 +315,7 @@ def main():
      ##instructions
      ins = ['This is a verlet based physics simulator(work in progress)',
             'It is based on POINTS and LINES.',
+            'Instructions',
             'A starting POINT(_s) is given the position of the mouse and is collidable ',
             'Moving the MOUSEWHEEL, changes the size of _s',
             'Z toggles LINE MODE, a white square appears at _s',
@@ -257,7 +326,10 @@ def main():
             'Clicking produces a POINT with size _s (not in LINE or MOTOR mode) ',
             'In LINE mode, click on 2 POINTS to join them',
             'In Motor mode, click 1 puts a POINT(_m) at _s, ',
-            '    click 2 rotates _m clockwise around a new POINT at _s ',]
+            '    click 2 rotates _m clockwise around a new POINT at _s ',
+            'Ctrl-S to save the current creation',
+            'Ctrl-O to load a creation, JSON file',
+            'Ctrl-Z to undo last action']
      ins = [font.render(ins[i], True, (150,150,150)) for i in range(len(ins))]
      
      insSurf = pygame.Surface((windowX, windowY))
@@ -265,16 +337,17 @@ def main():
      for i in range(len(ins)):
           insSurf.blit(ins[i],(5, i*20))
 
-
-
-
      
+
+
+     undo = []
      paused = False
      stickMode = False
      motorMode = False
      pinMode = False
      stickTemp = []
      pushp = Point(Vector2(),50,pinned = True)
+     save_helper_point_finder(pushp)
      pushp.color = (200,100,50)
      while True: ##main game loop
           DISPLAYSURF.blit(insSurf,(0,0))
@@ -305,6 +378,7 @@ def main():
           pushp.pos = Vector2(G.mpos[0], G.mpos[1])
           Stick.draw()
           Point.draw()
+          mods = pygame.key.get_mods()
           for event in pygame.event.get():
                if event.type == KEYDOWN:
                     if event.key == K_SPACE:
@@ -312,11 +386,26 @@ def main():
                          if stickMode :
                               stickMode = not stickMode
                               del stickTemp[:]
+                    if event.key == K_s:
+                         if mods & KMOD_CTRL:
+                              save()
+                    if event.key == K_o:
+                         if mods & KMOD_CTRL:
+                              load()
                     if event.key == K_z:
-                         stickMode = not stickMode
-                         
-                         if not stickMode or motorMode: del stickTemp[:]
-                         motorMode = False
+                         if mods & KMOD_CTRL:
+                              if len(undo) > 0:
+                                   del stickTemp[:]
+                                   if undo[-1] == 's':
+                                        del Stick.sticks[-1]
+                                   elif undo[-1] == 'p':
+                                        del Point.points[-1]
+                                   del undo[-1]
+                         else:
+                              stickMode = not stickMode
+                              
+                              if not stickMode or motorMode: del stickTemp[:]
+                              motorMode = False
                     if event.key == K_m:
                          motorMode = not motorMode
                          
@@ -360,6 +449,7 @@ def main():
                                         if math.hypot(event.pos[0] - p.pos.x, event.pos[1] - p.pos.y) < p.size:
                                              if p != stickTemp[0]:
                                                   Stick(Point.points[stickTemp[1]],Point.points[pp] ,True)
+                                                  undo.append('s')
                                                   del stickTemp[:]
                                              break
                          elif motorMode:
@@ -368,17 +458,18 @@ def main():
                                    stickTemp.append(motorP)
                               else:
                                    Point(stickTemp[0], pushp.size, True).motorize(Vector2(event.pos[0],event.pos[1]))
+                                   undo.append('p')
                                    del stickTemp[:]
                                    
                                    
                          else:
                               Point(Vector2(event.pos[0], event.pos[1]), pushp.size, pinMode)
+                              undo.append('p')
                     elif event.button == 4:
                          pushp.size += 1 if pushp.size <= 100 else 0
                     elif event.button == 5:
                          pushp.size -= 1 if pushp.size >= 5 else 0
-                    elif event.button == 3:
-                         deleteConnection(Vector2(event.pos[0], event.pos[1]),pushp.size)
+
                                    
                                    
                                              
