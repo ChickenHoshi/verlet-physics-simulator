@@ -1,2 +1,2 @@
 # verlet-physics-simulator
-![Alt Text](https://my.mixtape.moe/kmiayf.webm)
+![Alt Text](http://i.imgur.com/zdVYEZh.gifv)
