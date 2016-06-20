@@ -1,2 +1,2 @@
 # verlet-physics-simulator
-![alt tag](https://gfycat.com/ColorlessMenacingCentipede)
+![Alt Text](https://gfycat.com/ColorlessMenacingCentipede)
